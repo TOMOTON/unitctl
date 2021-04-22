@@ -1,3 +1,9 @@
+
+/*
+ * Copyright (C) TOMOTON, GmbH
+ * Copyright (C) Dann Martens
+ */
+
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>

@@ -11,5 +11,5 @@
              }
         }
     ],
-    "access_log": "/vagrant/.data/log/access.log"
+    "access_log": "/home/vagrant/.unitd/access.log"
 }
