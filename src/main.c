@@ -17,6 +17,7 @@
 
 #include "args.h"
 #include "colors.h"
+#include "control.h"
 #include "constants.h"
 #include "curl.h"
 #include "utils.h"
@@ -67,24 +68,28 @@ int spawn_unitd(char* run_dir, char* file_name) {
         //execl("/usr/sbin/unitd", "unitd", "--no-daemon", "--control", "unix:/var/run/control.unit.sock", (char *)0);
         //char * argv_list[] = { "unitd", "--no-daemon", "--control", "unix:/var/run/control.unit.sock" };
         //char *unix_socket = as_unix(CONTROL_UNIT_SOCK);
-        char *unix_socket = concat("unix:", concat(run_dir, CONTROL_UNIT_SOCK));
+        char *socket_path = concat(run_dir, CONTROL_UNIT_SOCK);
+        char *unix_socket = concat("unix:", socket_path);
         char *pid_path = concat(run_dir, UNIT_PID);
         char *log_path = concat(run_dir, UNIT_LOG);
         //char *state_path = concat(run_dir, );
-        char *argv_list[] = {"unitd",
-                             "--no-daemon",
-                             "--control", unix_socket,
-                             "--pid", pid_path,
-                             "--log", log_path,
-                             "--state", run_dir,
-                             "--user", "vagrant",
-                             "--group", "vagrant"};
+        char *argv_list[] = { "unitd",
+                              "--no-daemon",
+                              "--control", unix_socket,
+                              "--pid", pid_path,
+                              "--log", log_path,
+                              "--state", run_dir,
+                              "--user", "vagrant",
+                              "--group", "vagrant"
+                            };
         execv("/usr/sbin/unitd", argv_list);
         fprintf(stdout, BLUE "CHILD: AFTER exec!\n" NO_COLOR);
         die("execl");
+        free(socket_path);
         free(unix_socket);
         free(pid_path);
         free(log_path);
+        free(argv_list);
         //free(state_path);
     }
     else // Parent
@@ -99,11 +104,11 @@ int spawn_unitd(char* run_dir, char* file_name) {
         fprintf(stdout, BLUE "HTTP Get: pid=%d\n" NO_COLOR, pid);
         sleep(1);
         char* socket_path = concat(run_dir, CONTROL_UNIT_SOCK);
-        http_get_unit(socket_path);
-        //http_put_unit(".data/config.json");
-        fprintf(stdout, BLUE "Config file name %s!\n" NO_COLOR, file_name);
-        http_put_unit(socket_path, file_name);
-        http_get_unit(socket_path);
+        fprintf(stdout, BLUE "Unit socket path %s!\n" NO_COLOR, socket_path);
+        fprintf(stdout, BLUE "Config file path %s!\n" NO_COLOR, file_name);
+        fprintf(stdout, BLUE "Application URL  %s!\n" NO_COLOR, LOCALHOST_CONFIG);
+        //configure_unit(socket_path, LOCALHOST_CONFIG, file_name);
+        configure_unit2(socket_path, LOCALHOST_CONFIG, file_name);
         free(socket_path);
 
         // int nbytes;

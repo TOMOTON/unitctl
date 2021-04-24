@@ -11,7 +11,7 @@ make
 ## Running
 
 ```
-sudo ./bin/unitctl
+./bin/unitctl .data/config.json
 ```
 
 ```

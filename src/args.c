@@ -97,6 +97,7 @@ void get_run_dir(int argc, char* argv[], options_t* options) {
     char* run_dir = concat(home, "/.unitd/");
     printf("Current run dir: %s\n", run_dir);
     strncpy(options->run_dir, run_dir, MAX_PATH_SIZE);
+    free(run_dir);
 }
 
 
@@ -113,7 +114,7 @@ void options_parser(int argc, char* argv[], options_t* options) {
     {
         {"help", no_argument, 0, 'h'},
         {"version", no_argument, 0, 'v'},
-        {"run-dir", no_argument, 0, 'r'},
+        {"run-dir", required_argument, 0, 'r'},
         {"no-colors", no_argument, 0, 0},
     };
 

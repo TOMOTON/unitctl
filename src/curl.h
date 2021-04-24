@@ -8,9 +8,7 @@
 #define CURL_H
 
 
-int http_get_unit(char *socket);
-
-int http_put_unit(char *socket, char *path);
+int configure_unit(char const *socket, char const *url, char const *path);
 
 
 #endif // CURL_H

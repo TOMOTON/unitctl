@@ -14,5 +14,7 @@ static char const UNIT_PID[] = "unit.pid";
 
 static char const UNIT_LOG[] = "unit.log";
 
+static char const LOCALHOST_CONFIG[] = "http://localhost/config";
+
 
 #endif // CONSTANTS_H

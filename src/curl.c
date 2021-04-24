@@ -49,7 +49,39 @@ static size_t write_function_memory(void *contents, size_t size, size_t nmemb, v
 }
 
 
-int http_put_unit(char *socket, char *path) {
+int http_get_unit(char const *socket, char const *url) {
+  CURL *curl;
+  CURLcode res;
+
+  curl = curl_easy_init();
+  if(curl) {
+    //curl_easy_setopt(curl, CURLOPT_STDERR, myNullFile);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, noop_cb);
+    curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1);
+    curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1);
+    //curl_easy_setopt(curl, CURLOPT_MUTE, 1);
+
+    curl_easy_setopt(curl, CURLOPT_UNIX_SOCKET_PATH, socket);
+    curl_easy_setopt(curl, CURLOPT_URL, url);
+    res = curl_easy_perform(curl);
+
+    if(CURLE_OK == res) {
+      char *ct;
+      /* ask for the content-type */
+      res = curl_easy_getinfo(curl, CURLINFO_CONTENT_TYPE, &ct);
+
+      if((CURLE_OK == res) && ct)
+        printf("We received Content-Type: %s\n", ct);
+    }
+
+    /* always cleanup */
+    curl_easy_cleanup(curl);
+  }
+  return 0;
+}
+
+
+int http_put_unit(char const *socket, char const *url, char const *path) {
   CURL *curl;
   CURLcode res;
 
@@ -77,7 +109,7 @@ int http_put_unit(char *socket, char *path) {
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, noop_cb);
     /* upload to this place */
     curl_easy_setopt(curl, CURLOPT_UNIX_SOCKET_PATH, socket);
-    curl_easy_setopt(curl, CURLOPT_URL, "http://localhost/config");
+    curl_easy_setopt(curl, CURLOPT_URL, url);
 
     /* tell it to "upload" to the URL */
     curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);
@@ -116,33 +148,12 @@ int http_put_unit(char *socket, char *path) {
   return 0;
 }
 
-int http_get_unit(char *socket) {
-  CURL *curl;
-  CURLcode res;
 
-  curl = curl_easy_init();
-  if(curl) {
-    //curl_easy_setopt(curl, CURLOPT_STDERR, myNullFile);
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, noop_cb);
-    curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1);
-    curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1);
-    //curl_easy_setopt(curl, CURLOPT_MUTE, 1);
-
-    curl_easy_setopt(curl, CURLOPT_UNIX_SOCKET_PATH, socket);
-    curl_easy_setopt(curl, CURLOPT_URL, "http://localhost/config");
-    res = curl_easy_perform(curl);
-
-    if(CURLE_OK == res) {
-      char *ct;
-      /* ask for the content-type */
-      res = curl_easy_getinfo(curl, CURLINFO_CONTENT_TYPE, &ct);
-
-      if((CURLE_OK == res) && ct)
-        printf("We received Content-Type: %s\n", ct);
-    }
-
-    /* always cleanup */
-    curl_easy_cleanup(curl);
-  }
-  return 0;
+int configure_unit(char const *socket, char const *url, char const *path) {
+    curl_global_init(CURL_GLOBAL_NOTHING);
+    http_get_unit(socket, url);
+    http_put_unit(socket, url, path);
+    //http_get_unit(socket, url);
+    curl_global_cleanup();
+    return 0;
 }
