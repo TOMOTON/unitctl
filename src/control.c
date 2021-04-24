@@ -11,6 +11,8 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
+#include "colors.h"
+
 
 struct Entity {
     long length;
@@ -30,17 +32,13 @@ int send_request(char const *unix_socket_path, char const *request, struct Entit
         strcpy(addr.sun_path, unix_socket_path);
         if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) != -1) {
             if (send(fd, request, strlen(request), 0) != -1) {
-                //fprintf(stdout, "configure_unit2::send_requests - Sending entity %s (%ld)\n", entity,size);
                 if (entity != NULL) {
-                    fprintf(stdout, "configure_unit2::send_requests - Sending entity (%ld)\n", entity->length);
-                    fprintf(stdout, "configure_unit2::send_requests - [0]\n");
+                    //fprintf(stdout, "configure_unitd::send_requests - Sending entity (%ld)\n", entity->length);
                     send(fd, entity->content, entity->length, 0);
-                    fprintf(stdout, "configure_unit2::send_requests - [1]\n");
                     send(fd, "\r\n", 2, 0);
-                    fprintf(stdout, "configure_unit2::send_requests - [2]\n");
                 }
                 if ((len = recv(fd, response, 8192, 0)) >= 0) {
-                    fprintf(stdout, "configure_unit2::send_requests - Received octets=%d", len);
+                    //fprintf(stdout, "configure_unitd::send_requests - Received octets=%d\n", len);
                     result = 0;
                 } else {
                     perror("recv");
@@ -49,13 +47,12 @@ int send_request(char const *unix_socket_path, char const *request, struct Entit
                 perror("send");
             }
         } else {
-           perror("connect");
+           //perror("connect");
         }
         close(fd);
     } else {
         perror("socket");
     }
-    fprintf(stdout, "configure_unit2::send_requests - EXIT!\n");
     return result;
 }
 
@@ -65,14 +62,15 @@ int get_url(char const *unix_socket_path, char const *url) {
                     "Host: localhost\r\n"
                     "Connection: close\r\n"
                     "\r\n";
-    fprintf(stdout, "configure_unit2::get_url - Sending HTTP Request:\n-->>\n%s--<<-\n", request);
+    //fprintf(stdout, "configure_unitd::get_url - Sending HTTP Request:\n-->>\n%s--<<-\n", request);
     char response[8192] = {0};
-    int code = send_request(unix_socket_path, request, NULL, response);
-    if (code == 0) {
-        fprintf(stdout, "configure_unit2::get_url - Received HTTP Response:\n-->>\n%s--<<-\n", response);
+    int result = send_request(unix_socket_path, request, NULL, response);
+    if (result == 0) {
+        //fprintf(stdout, "configure_unitd::get_url - Received HTTP Response:\n-->>\n%s--<<-\n", response);
     }
-    return 0;
+    return result;
 }
+
 
 int put_url(char const *unix_socket_path, char const *url, struct Entity *entity) {
     (void)url;
@@ -82,19 +80,19 @@ int put_url(char const *unix_socket_path, char const *url, struct Entity *entity
                     "Content-Type: application/json\r\n"
                     "Content-Length: 283\r\n"
                     "\r\n";
-    fprintf(stdout, "configure_unit2::put_url - Sending HTTP Request:\n-->>\n%s--<<-\n", request);
+    //fprintf(stdout, "configure_unitd::put_url - Sending HTTP Request:\n-->>\n%s--<<-\n", request);
     char response[8192] = {0};
-    int code = send_request(unix_socket_path, request, entity, response);
-    if (code == 0) {
-        fprintf(stdout, "configure_unit2::put_url - Received HTTP Response:\n-->>\n%s--<<-\n", response);
+    int result = send_request(unix_socket_path, request, entity, response);
+    if (result == 0) {
+        //fprintf(stdout, "configure_unitd::put_url - Received HTTP Response:\n-->>\n%s--<<-\n", response);
     }
-    return 0;
+    return result;
 }
 
 
 int load_entity(char const *file_path, struct Entity *entity) {
     char *source = NULL;
-    fprintf(stdout, "configure_unit2::load_entity - Reading file: %s\n", file_path);
+    //fprintf(stdout, "configure_unitd::load_entity - Reading file: %s\n", file_path);
     int result = -1;
     FILE *fp = fopen(file_path, "r");
     if (fp != NULL) {
@@ -107,31 +105,47 @@ int load_entity(char const *file_path, struct Entity *entity) {
                 source = malloc(sizeof(char) * (length + 1));
 
                 /* Go back to the start of the file. */
-                if (fseek(fp, 0L, SEEK_SET) != 0) { /* Error */ }
-
-                /* Read the entire file into memory. */
-                size_t newLen = fread(source, sizeof(char), length, fp);
-                if ( ferror( fp ) != 0 ) {
-                    fputs("Error reading file", stderr);
-                } else {
-                    source[newLen++] = '\0'; /* Just to be safe. */
+                if (fseek(fp, 0L, SEEK_SET) == 0) {
+                    /* Read the entire file into memory. */
+                    size_t newLen = fread(source, sizeof(char), length, fp);
+                    if (ferror(fp) == 0) {
+                        source[newLen++] = '\0'; /* Just to be safe. */
+                        entity->length = length;
+                        entity->content = source;
+                        result = 0;
+                    } else {
+                        fprintf(stderr, RED "Error! Failure reading file '%s'!\n" NO_COLOR, file_path);
+                    }
                 }
             }
-            entity->length = length;
-            entity->content = source;
-            result = 0;
         }
         fclose(fp);
-        //fprintf(stdout, "configure_unit2::load_entity Content: octets=%ld\n-->>\n%s\n--<<-\n", length, *source);
     }
     return result;
 }
 
-int configure_unit2(char const *unix_socket_path, char const *url, char const *file_path) {
-    get_url(unix_socket_path, url);
+
+int await_unitd(char const *unix_socket_path) {
+    int retry = 100;
+    int result = 0;
+    int ready;
+    while((ready = get_url(unix_socket_path, "/")) != 0) {
+        //fprintf(stdout, MAGENTA "NOT READY.\n" NO_COLOR);
+        sleep(1);
+        retry--;
+        if (retry == 0) {
+            result = -1;
+            break;
+        }
+    }
+    return result;
+}
+
+
+int configure_unitd(char const *unix_socket_path, char const *url, char const *file_path) {
     struct Entity entity;
     load_entity(file_path, &entity);
-    fprintf(stdout, "configure_unit2::configure_unit2 Entity: octets=%ld\n-->>\n%s\n--<<-\n", entity.length, entity.content);
+    //fprintf(stdout, "configure_unitd::configure_unitd Entity: octets=%ld\n-->>\n%s\n--<<-\n", entity.length, entity.content);
     put_url(unix_socket_path, url, &entity);
     free(entity.content);
     get_url(unix_socket_path, url);

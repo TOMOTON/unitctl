@@ -8,7 +8,9 @@
 #define CONTROL_H
 
 
-int configure_unit2(char const *socket, char const *url, char const *path);
+int await_unitd(char const *unix_socket_path);
+
+int configure_unitd(char const *unix_socket_path, char const *url, char const *path);
 
 
 #endif // CONTROL_H

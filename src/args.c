@@ -92,10 +92,10 @@ void get_run_dir(int argc, char* argv[], options_t* options) {
         struct passwd *pw = getpwuid(getuid());
         home = pw->pw_dir;
     }
-    printf("Current home dir: %s\n", home);
+    //printf("Current home dir: %s\n", home);
 
     char* run_dir = concat(home, "/.unitd/");
-    printf("Current run dir: %s\n", run_dir);
+    //printf("Current run dir: %s\n", run_dir);
     strncpy(options->run_dir, run_dir, MAX_PATH_SIZE);
     free(run_dir);
 }
