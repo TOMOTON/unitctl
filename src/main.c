@@ -22,6 +22,10 @@
 #include "utils.h"
 
 
+char *unix_socket_path;
+char *config_file_path;
+
+
 #define die(e)                                           \
     do {                                                 \
         fprintf(stderr, MAGENTA "DIE %s\n" NO_COLOR, e); \
@@ -32,13 +36,15 @@
 void sigint_handler(int signum) {
     (void)signum;
     //Return type of the handler function should be void
-    printf("\nInside SIGINT handler function\n");
+    //printf("\nInside SIGINT handler function\n");
+    printf("\n");
 }
 
 void sigusr1_handler(int signum) {
     (void)signum;
     //Return type of the handler function should be void
-    printf("\nInside SIGUSR1 handler function\n");
+    configure_unitd(unix_socket_path, LOCALHOST_CONFIG, config_file_path);
+    fprintf(stdout, GREEN "Succes!" NO_COLOR " Reconfiguration done.\n" NO_COLOR);
 }
 
 char* as_unix(char *socket) {
@@ -80,10 +86,11 @@ int spawn_unitd(char* run_dir, char* file_name) {
                               "--control", unix_socket,
                               "--pid", pid_path,
                               "--log", log_path,
-                              "--state", run_dir,
-                              "--user", "vagrant",
-                              "--group", "vagrant"
+                              "--state", run_dir
                             };
+                            //   "--user", "vagrant",
+                            //   "--group", "vagrant"
+                            // };
         execv("/usr/sbin/unitd", argv_list);
         //! fprintf(stdout, BLUE "CHILD: AFTER exec!\n" NO_COLOR);
         die("execl");
@@ -95,7 +102,7 @@ int spawn_unitd(char* run_dir, char* file_name) {
     } else { // Parent
         close(link[1]);
         signal(SIGINT, sigint_handler);
-        signal(SIGUSR1, sigusr1_handler);
+
 
         char* socket_path = concat(run_dir, CONTROL_UNIT_SOCK);
         fprintf(stdout, BLUE "Unit run dir" CYAN " %s\n" NO_COLOR, run_dir);
@@ -105,6 +112,9 @@ int spawn_unitd(char* run_dir, char* file_name) {
         fprintf(stdout, NO_COLOR "Output unitd:\n-->>\n" NO_COLOR);
         if(await_unitd(socket_path) == 0) {
             fprintf(stdout, NO_COLOR "--<<-\n" NO_COLOR);
+            unix_socket_path = socket_path;
+            config_file_path = file_name;
+            signal(SIGUSR1, sigusr1_handler);
             configure_unitd(socket_path, LOCALHOST_CONFIG, file_name);
             fprintf(stdout, GREEN "Succes!" NO_COLOR " Reconfiguration done.\n" NO_COLOR);
             //wait(NULL);
@@ -112,8 +122,8 @@ int spawn_unitd(char* run_dir, char* file_name) {
             waitpid(pid, &returnStatus, 0); // Parent process waits here for child to terminate.
 
             // Single
-            int nbytes = read(link[0], foo, sizeof(foo));
-            printf("Output: (%.*s)\n", nbytes, foo);
+            // int nbytes = read(link[0], foo, sizeof(foo));
+            // printf("Output: (%.*s)\n", nbytes, foo);
             // Continuous
             // int nbytes;
             // while (0 != (nbytes = read(link[0], foo, sizeof(foo)))) {
@@ -122,9 +132,9 @@ int spawn_unitd(char* run_dir, char* file_name) {
             //   memset(foo, 0, 4096);
             // }
             if (returnStatus == 0) { // Verify child process terminated without error
-                printf("The Nginx Unit process terminated normally.\n");
+                printf("The unitd process terminated normally.\n");
             } else {
-                printf("The Nginx Unit process terminated with an error!.\n");
+                printf("The unitd process terminated with an error!.\n");
             }
         } else {
             fprintf(stdout, RED "Failure!" NO_COLOR " Check Nginx Unit logs in '%s/unit.log'!\n" NO_COLOR, run_dir);
@@ -161,7 +171,7 @@ int main(int argc, char *argv[]) {
     if (access(options.file_name, R_OK) == 0) {
         spawn_unitd(options.run_dir, options.file_name);
     } else {
-        fprintf(stdout, RED "Error! Invalid config file '%s'!\n" NO_COLOR, options.file_name);
+        fprintf(stdout, RED "Error!" NO_COLOR " Invalid config file " CYAN "'%s'!\n" NO_COLOR, options.file_name);
         return ENOENT;
     }
 
