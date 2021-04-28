@@ -5,8 +5,6 @@ ARG ALPINE_VERSION=3.13
 FROM alpine:${ALPINE_VERSION} as builder
 
 RUN apk add --no-cache \
-            --upgrade \
-            --repository http://dl-cdn.alpinelinux.org/alpine/edge/main \
         alpine-sdk \
         linux-headers \
         bash
@@ -16,9 +14,8 @@ COPY Makefile /work/
 COPY src /work/src
 
 RUN echo "Building unitctl..." \
-        && mkdir lib \
-        && mkdir bin \
-        && make -d
+        && mkdir lib bin \
+        && make
 
 
 #--
@@ -33,7 +30,8 @@ RUN echo "New user vcap (2000)" \
 USER vcap
 
 WORKDIR /home/vcap
-COPY --chown=vcap:vcap dist /home/vcap
-COPY --from=builder /work/bin/unitctl /home/vcap
+COPY --chown=vcap:vcap .data/www /home/vcap/www
+COPY --chown=vcap:vcap .data/vcap/config.json /home/vcap
+COPY --from=builder --chown=vcap:vcap /work/bin/unitctl /home/vcap
 
 ENTRYPOINT ["/home/vcap/unitctl", "config.json"]

@@ -12,8 +12,7 @@ COPY Makefile /work/
 COPY src /work/src
 
 RUN echo "Building unitctl..." \
-        && mkdir lib \
-        && mkdir bin \
+        && mkdir lib bin \
         && make
 
 RUN echo "Downloading Nginx Unit installation package..." \
@@ -23,7 +22,6 @@ RUN echo "Downloading Nginx Unit installation package..." \
         && apt-get -y update \
         && chown -R _apt:root . \
         && apt-get -yq download unit \
-        #&& chown -R root:root . \
         && ls -Al
 
 

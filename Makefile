@@ -61,17 +61,12 @@ LIBS := # -lm  -I some/path/to/library
 # Test libraries
 TEST_LIBS := -l cmocka -L /usr/lib
 
-
-
 # Tests binary file
 TEST_BINARY := $(BINARY)_test_runner
-
-
 
 # %.o file names
 NAMES := $(notdir $(basename $(wildcard $(SRCDIR)/*.$(SRCEXT))))
 OBJECTS :=$(patsubst %,$(LIBDIR)/%.o,$(NAMES))
-
 
 #
 # COMPILATION RULES
@@ -81,7 +76,7 @@ default: all
 
 # Help message
 help:
-	@echo "C Project Template"
+	@echo "C Project unitctl"
 	@echo
 	@echo "Target rules:"
 	@echo "    all      - Compiles and generates binary file"
