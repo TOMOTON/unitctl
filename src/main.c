@@ -115,7 +115,7 @@ int spawn_unitd(char* run_dir, char* file_name) {
             unix_socket_path = socket_path;
             config_file_path = file_name;
             signal(SIGUSR1, sigusr1_handler);
-            configure_unitd(socket_path, LOCALHOST_CONFIG, file_name);
+            configure_unitd(socket_path, CONFIG_PATH, file_name);
             fprintf(stdout, GREEN "Succes!" NO_COLOR " Reconfiguration done.\n" NO_COLOR);
             //wait(NULL);
             int returnStatus;

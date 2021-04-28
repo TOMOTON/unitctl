@@ -1,0 +1,39 @@
+ARG ALPINE_VERSION=3.13
+
+
+#--
+FROM alpine:${ALPINE_VERSION} as builder
+
+RUN apk add --no-cache \
+            --upgrade \
+            --repository http://dl-cdn.alpinelinux.org/alpine/edge/main \
+        alpine-sdk \
+        linux-headers \
+        bash
+
+WORKDIR /work
+COPY Makefile /work/
+COPY src /work/src
+
+RUN echo "Building unitctl..." \
+        && mkdir lib \
+        && mkdir bin \
+        && make -d
+
+
+#--
+FROM alpine:${ALPINE_VERSION}
+
+RUN apk add --no-cache unit
+
+RUN echo "New user vcap (2000)" \
+        && addgroup -g 2000 vcap \
+        && adduser -D -u 2000 -G vcap vcap
+
+USER vcap
+
+WORKDIR /home/vcap
+COPY --chown=vcap:vcap dist /home/vcap
+COPY --from=builder /work/bin/unitctl /home/vcap
+
+ENTRYPOINT ["/home/vcap/unitctl", "config.json"]

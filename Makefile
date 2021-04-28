@@ -1,17 +1,8 @@
-# Includes the project configurations
-include project.conf
+# Project name
+PROJECT_NAME := unitctl
 
-#
-# Validating project variables defined in project.conf
-#
-ifndef PROJECT_NAME
-$(error Missing PROJECT_NAME. Put variables at project.conf file)
-endif
-ifndef BINARY
-$(error Missing BINARY. Put variables at project.conf file)
-endif
-
-
+# Binary
+BINARY := unitctl
 
 # Gets the Operating system name
 OS := $(shell uname -s)

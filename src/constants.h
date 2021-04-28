@@ -16,5 +16,7 @@ static char const UNIT_LOG[] = "unit.log";
 
 static char const LOCALHOST_CONFIG[] = "http://localhost/config";
 
+static char const CONFIG_PATH[] = "/config";
+
 
 #endif // CONSTANTS_H

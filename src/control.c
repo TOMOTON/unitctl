@@ -6,12 +6,14 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #include <sys/socket.h>
 #include <sys/un.h>
 
 #include "colors.h"
+#include "utils.h"
 
 
 struct Entity {
@@ -56,35 +58,41 @@ int send_request(char const *unix_socket_path, char const *request, struct Entit
     return result;
 }
 
-int get_url(char const *unix_socket_path, char const *url) {
-    (void)url;
-    char const *request = "GET /config HTTP/1.1\r\n"
+int http_get(char const *unix_socket_path, char const *request_target) {
+    char const *request_template = "GET %s HTTP/1.1\r\n"
                     "Host: localhost\r\n"
                     "Connection: close\r\n"
                     "\r\n";
-    //fprintf(stdout, "configure_unitd::get_url - Sending HTTP Request:\n-->>\n%s--<<-\n", request);
+    int length = strlen(request_template) -1 + strlen(request_target);
+    char *request = malloc(sizeof(char) * length);
+    snprintf(request, length, request_template, request_target);
+    fprintf(stdout, "configure_unitd::http_get - Sending HTTP Request:\n-->>\n%s--<<-\n", request);
     char response[8192] = {0};
     int result = send_request(unix_socket_path, request, NULL, response);
+    free(request);
     if (result == 0) {
-        //fprintf(stdout, "configure_unitd::get_url - Received HTTP Response:\n-->>\n%s--<<-\n", response);
+        fprintf(stdout, "configure_unitd::http_get - Received HTTP Response:\n-->>\n%s--<<-\n", response);
     }
     return result;
 }
 
 
-int put_url(char const *unix_socket_path, char const *url, struct Entity *entity) {
-    (void)url;
-    char const *request = "PUT /config HTTP/1.1\r\n"
+int http_put(char const *unix_socket_path, char const *request_target, struct Entity *entity) {
+    char const *request_template = "PUT %s HTTP/1.1\r\n"
                     "Host: localhost\r\n"
                     "Connection: close\r\n"
                     "Content-Type: application/json\r\n"
-                    "Content-Length: 283\r\n"
+                    "Content-Length: %d\r\n"
                     "\r\n";
-    //fprintf(stdout, "configure_unitd::put_url - Sending HTTP Request:\n-->>\n%s--<<-\n", request);
+    int length = strlen(request_template) - 3 + strlen(request_target) + count_digits(entity->length);
+    char *request = malloc(sizeof(char) * length);
+    snprintf(request, length, request_template, request_target, entity->length);
+    fprintf(stdout, "configure_unitd::http_put - Sending HTTP Request:\n-->>\n%s--<<-\n", request);
     char response[8192] = {0};
     int result = send_request(unix_socket_path, request, entity, response);
+    free(request);
     if (result == 0) {
-        //fprintf(stdout, "configure_unitd::put_url - Received HTTP Response:\n-->>\n%s--<<-\n", response);
+        fprintf(stdout, "configure_unitd::http_put - Received HTTP Response:\n-->>\n%s--<<-\n", response);
     }
     return result;
 }
@@ -129,7 +137,7 @@ int await_unitd(char const *unix_socket_path) {
     int retry = 100;
     int result = 0;
     int ready;
-    while((ready = get_url(unix_socket_path, "/")) != 0) {
+    while((ready = http_get(unix_socket_path, "/")) != 0) {
         //fprintf(stdout, MAGENTA "NOT READY.\n" NO_COLOR);
         sleep(1);
         retry--;
@@ -142,13 +150,13 @@ int await_unitd(char const *unix_socket_path) {
 }
 
 
-int configure_unitd(char const *unix_socket_path, char const *url, char const *file_path) {
+int configure_unitd(char const *unix_socket_path, char const *request_target, char const *file_path) {
     struct Entity entity;
     load_entity(file_path, &entity);
     //fprintf(stdout, "configure_unitd::configure_unitd Entity: octets=%ld\n-->>\n%s\n--<<-\n", entity.length, entity.content);
-    put_url(unix_socket_path, url, &entity);
+    http_put(unix_socket_path, request_target, &entity);
     free(entity.content);
-    get_url(unix_socket_path, url);
+    http_get(unix_socket_path, request_target);
     return 0;
 }
 

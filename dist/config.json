@@ -1,0 +1,15 @@
+{
+    "listeners": {
+        "*:9090": {
+            "pass": "routes"
+        }
+     },
+    "routes": [
+        {
+            "action": {
+                "share": "/home/vcap/www"
+             }
+        }
+    ],
+    "access_log": "/home/vcap/.unitd/access.log"
+}

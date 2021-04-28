@@ -53,3 +53,4 @@
 
 # Vagrant
 .vagrant
+/.dockerignore
