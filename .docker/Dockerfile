@@ -44,7 +44,8 @@ RUN echo "New user vcap (2000)" \
 USER vcap
 
 WORKDIR /home/vcap
-COPY --chown=vcap:vcap dist /home/vcap
+COPY --chown=vcap:vcap .data/www /home/vcap/www
+COPY --chown=vcap:vcap .data/vcap/config.json /home/vcap
 COPY --from=builder --chown=vcap:vcap /work/bin/unitctl /home/vcap
 
 ENTRYPOINT ["/home/vcap/unitctl", "config.json"]

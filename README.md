@@ -10,18 +10,24 @@ make
 
 ## Running
 
+### With Vagrant
+
+Run unitd through unitctl:
 ```
-./bin/unitctl .data/config.json
+./bin/unitctl .data/vagrant/config.json
 ```
 
+Run unitd interactively:
 ```
 sudo /usr/sbin/unitd --no-daemon --control unix:/var/run/control.unit.sock
 ```
 
-## Acknowledgements
+### With Docker
 
-This project was started with the C template provided by Gustavo Pantuza Coelho
-Pinto.
+Run unitd through unitctl in isolation:
+```
+sudo docker rm UNIT && sudo docker run -it -p 9090:9090 --name UNIT docker-registry.tomoton.com:443/unitctlstatic
+```
 
 ## Packaging
 
@@ -29,7 +35,7 @@ Pinto.
 
 Build image:
 ```
-cd .docker
+cp .docker/.dockerignore .
 sudo docker image build -f .docker/Dockerfile -t docker-registry.tomoton.com:443/unitctlstatic .
 ```
 
@@ -47,3 +53,8 @@ Run image:
 ```
 sudo docker rm UNIT && sudo docker run -it -p 9090:9090 --name UNIT docker-registry.tomoton.com:443/unitctlstatic
 ```
+
+## Acknowledgements
+
+This project was started with the C template provided by Gustavo Pantuza Coelho
+Pinto.
