@@ -26,7 +26,8 @@ sudo /usr/sbin/unitd --no-daemon --control unix:/var/run/control.unit.sock
 
 Run unitd through unitctl in isolation:
 ```
-sudo docker rm UNIT && sudo docker run -it -p 9090:9090 --name UNIT docker-registry.tomoton.com:443/unitctlstatic
+sudo docker stop UNIT && sudo docker rm UNIT
+sudo docker run -it -p 9090:9090 --name UNIT docker-registry.tomoton.com:443/unitctlstatic
 ```
 
 ## Packaging

@@ -26,6 +26,7 @@ static void set_default_options(options_t* options) {
     options->help = false;
     options->version = false;
     options->use_colors = true;
+    options->debug = false;
     options->run_dir[0] = 0;
 }
 
@@ -55,6 +56,10 @@ void switch_options (int arg, options_t* options) {
 
         case 0:
             options->use_colors = false;
+            break;
+
+        case 'd':
+            options->debug = true;
             break;
 
         case '?':
@@ -116,12 +121,14 @@ void options_parser(int argc, char* argv[], options_t* options) {
         {"version", no_argument, 0, 'v'},
         {"run-dir", required_argument, 0, 'r'},
         {"no-colors", no_argument, 0, 0},
+        {"debug", no_argument, 0, 'd'},
+        {NULL, 0, NULL, 0}
     };
 
     while (true) {
 
         int option_index = 0;
-        arg = getopt_long(argc, argv, "hvr:t:", long_options, &option_index);
+        arg = getopt_long(argc, argv, "hvr:.d", long_options, &option_index);
 
         /* End of the options? */
         if (arg == -1) break;

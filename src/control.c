@@ -12,6 +12,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
+#include "args.h"
 #include "colors.h"
 #include "utils.h"
 
@@ -27,7 +28,6 @@ int send_request(char const *unix_socket_path, char const *request, struct Entit
     struct sockaddr_un addr;
     int result = 1;
     int len;
-
     if ((fd = socket(PF_UNIX, SOCK_STREAM, 0)) >= 0) { // SOCK_DGRAM
         memset(&addr, 0, sizeof(addr));
         addr.sun_family = AF_UNIX;
@@ -66,12 +66,12 @@ int http_get(char const *unix_socket_path, char const *request_target) {
     int length = strlen(request_template) -1 + strlen(request_target);
     char *request = malloc(sizeof(char) * length);
     snprintf(request, length, request_template, request_target);
-    fprintf(stdout, "configure_unitd::http_get - Sending HTTP Request:\n-->>\n%s--<<-\n", request);
+    if (g_options.debug) fprintf(stdout, GREEN "Sending HTTP Request:" NO_COLOR "\n" WHITE "-->>" NO_COLOR "\n%s" WHITE"--<<-" NO_COLOR "\n", request);
     char response[8192] = {0};
     int result = send_request(unix_socket_path, request, NULL, response);
     free(request);
     if (result == 0) {
-        fprintf(stdout, "configure_unitd::http_get - Received HTTP Response:\n-->>\n%s--<<-\n", response);
+        if (g_options.debug) fprintf(stdout, GREEN "Received HTTP Response:" NO_COLOR "\n" WHITE "-->>" NO_COLOR "\n%s" WHITE"--<<-" NO_COLOR "\n", response);
     }
     return result;
 }
@@ -87,12 +87,12 @@ int http_put(char const *unix_socket_path, char const *request_target, struct En
     int length = strlen(request_template) - 3 + strlen(request_target) + count_digits(entity->length);
     char *request = malloc(sizeof(char) * length);
     snprintf(request, length, request_template, request_target, entity->length);
-    fprintf(stdout, "configure_unitd::http_put - Sending HTTP Request:\n-->>\n%s--<<-\n", request);
+    if (g_options.debug) fprintf(stdout, GREEN "Sending HTTP Request:" NO_COLOR "\n" WHITE "-->>" NO_COLOR "\n%s" WHITE"--<<-" NO_COLOR "\n", request);
     char response[8192] = {0};
     int result = send_request(unix_socket_path, request, entity, response);
     free(request);
     if (result == 0) {
-        fprintf(stdout, "configure_unitd::http_put - Received HTTP Response:\n-->>\n%s--<<-\n", response);
+        if (g_options.debug) fprintf(stdout, GREEN "Received HTTP Response:" NO_COLOR "\n" WHITE "-->>" NO_COLOR "\n%s" WHITE"--<<-" NO_COLOR "\n", response);
     }
     return result;
 }
@@ -134,15 +134,18 @@ int load_entity(char const *file_path, struct Entity *entity) {
 
 
 int await_unitd(char const *unix_socket_path) {
-    int retry = 100;
+    int retry = 10;
     int result = 0;
     int ready;
-    while((ready = http_get(unix_socket_path, "/")) != 0) {
-        //fprintf(stdout, MAGENTA "NOT READY.\n" NO_COLOR);
+    char const *request = "GET / HTTP/1.1\r\n\r\n";
+    char response[8192] = {0};
+    while((ready = send_request(unix_socket_path, request, NULL, response)) != 0) {
+    //while((ready = http_get(unix_socket_path, "/")) != 0) {
         sleep(1);
         retry--;
         if (retry == 0) {
             result = -1;
+            fprintf(stderr, RED "Error! Process unitd did not respond on '%s'!\n" NO_COLOR, unix_socket_path);
             break;
         }
     }
@@ -153,23 +156,8 @@ int await_unitd(char const *unix_socket_path) {
 int configure_unitd(char const *unix_socket_path, char const *request_target, char const *file_path) {
     struct Entity entity;
     load_entity(file_path, &entity);
-    //fprintf(stdout, "configure_unitd::configure_unitd Entity: octets=%ld\n-->>\n%s\n--<<-\n", entity.length, entity.content);
     http_put(unix_socket_path, request_target, &entity);
     free(entity.content);
     http_get(unix_socket_path, request_target);
     return 0;
 }
-
-// char* build_request(char *hostname, char *request_path) {}
-//     char *request = NULL;
-//     Buffer *request_buffer = buffer_alloc(BUF_SIZE);
-
-//     buffer_appendf(request_buffer, "GET %s HTTP/1.0\r\n", request_path);
-//     buffer_appendf(request_buffer, "Host: %s\r\n", hostname);
-//     buffer_appendf(request_buffer, "Connection: close\r\n\r\n");
-
-//     request = buffer_to_s(request_buffer);
-//     buffer_free(request_buffer);
-
-//     return request;
-// }

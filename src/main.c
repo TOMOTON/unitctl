@@ -22,15 +22,16 @@
 #include "utils.h"
 
 
-char *unix_socket_path;
-char *config_file_path;
-
-
 #define die(e)                                           \
     do {                                                 \
         fprintf(stderr, MAGENTA "DIE %s\n" NO_COLOR, e); \
         exit(EXIT_FAILURE);                              \
     } while (0);
+
+
+/* Global options. */
+options_t g_options;
+//char *config_file_path;
 
 
 void sigint_handler(int signum) {
@@ -40,20 +41,16 @@ void sigint_handler(int signum) {
     printf("\n");
 }
 
+
 void sigusr1_handler(int signum) {
     (void)signum;
     //Return type of the handler function should be void
-    configure_unitd(unix_socket_path, LOCALHOST_CONFIG, config_file_path);
+    char* unix_socket_path = concat(g_options.run_dir, CONTROL_UNIT_SOCK);
+    configure_unitd(unix_socket_path, LOCALHOST_CONFIG, g_options.file_name);
+    free(unix_socket_path);
     fprintf(stdout, GREEN "Succes!" NO_COLOR " Reconfiguration done.\n" NO_COLOR);
 }
 
-char* as_unix(char *socket) {
-    int length = strlen(socket) + 6;
-    char *result = malloc(sizeof(char) * length);
-    snprintf(result, length, "unix:%s", socket);
-    fprintf(stdout, BLUE "as_unix -> %s!\n" NO_COLOR, result);
-    return result;
-}
 
 int spawn_unitd(char* run_dir, char* file_name) {
     int link[2];
@@ -102,20 +99,16 @@ int spawn_unitd(char* run_dir, char* file_name) {
     } else { // Parent
         close(link[1]);
         signal(SIGINT, sigint_handler);
-
-
-        char* socket_path = concat(run_dir, CONTROL_UNIT_SOCK);
+        char* unix_socket_path = concat(run_dir, CONTROL_UNIT_SOCK);
         fprintf(stdout, BLUE "Unit run dir" CYAN " %s\n" NO_COLOR, run_dir);
-        //fprintf(stdout, BLUE "Unit socket path" CYAN " %s\n" NO_COLOR, socket_path);
+        //fprintf(stdout, BLUE "Unit socket path" CYAN " %s\n" NO_COLOR, unix_socket_path);
         //fprintf(stdout, BLUE "Config file path %s\n" NO_COLOR, file_name);
         //fprintf(stdout, BLUE "Application URL  %s\n" NO_COLOR, LOCALHOST_CONFIG);
         fprintf(stdout, NO_COLOR "Output unitd:\n-->>\n" NO_COLOR);
-        if(await_unitd(socket_path) == 0) {
+        if(await_unitd(unix_socket_path) == 0) {
             fprintf(stdout, NO_COLOR "--<<-\n" NO_COLOR);
-            unix_socket_path = socket_path;
-            config_file_path = file_name;
             signal(SIGUSR1, sigusr1_handler);
-            configure_unitd(socket_path, CONFIG_PATH, file_name);
+            configure_unitd(unix_socket_path, CONFIG_PATH, file_name);
             fprintf(stdout, GREEN "Succes!" NO_COLOR " Reconfiguration done.\n" NO_COLOR);
             //wait(NULL);
             int returnStatus;
@@ -139,9 +132,7 @@ int spawn_unitd(char* run_dir, char* file_name) {
         } else {
             fprintf(stdout, RED "Failure!" NO_COLOR " Check Nginx Unit logs in '%s/unit.log'!\n" NO_COLOR, run_dir);
         }
-        free(socket_path);
-
-
+        free(unix_socket_path);
     }
     return 0;
 }
@@ -149,15 +140,15 @@ int spawn_unitd(char* run_dir, char* file_name) {
 int main(int argc, char *argv[]) {
 
     /* Read command line options */
-    options_t options;
-    options_parser(argc, argv, &options);
+
+    options_parser(argc, argv, &g_options);
 
 // #ifdef DEBUG
-//     fprintf(stdout, BLUE "Command line options:\n" NO_COLOR);
-//     fprintf(stdout, YELLOW "help: %d\n" NO_COLOR, options.help);
-//     fprintf(stdout, YELLOW "version: %d\n" NO_COLOR, options.version);
-//     fprintf(stdout, YELLOW "use colors: %d\n" NO_COLOR, options.use_colors);
-//     fprintf(stdout, YELLOW "filename: %s\n" NO_COLOR, options.file_name);
+//     fprintf(stdout, BLUE "Command line g_options:\n" NO_COLOR);
+//     fprintf(stdout, YELLOW "help: %d\n" NO_COLOR, g_options.help);
+//     fprintf(stdout, YELLOW "version: %d\n" NO_COLOR, g_options.version);
+//     fprintf(stdout, YELLOW "use colors: %d\n" NO_COLOR, g_options.use_colors);
+//     fprintf(stdout, YELLOW "filename: %s\n" NO_COLOR, g_options.file_name);
 // #endif
 
     // char cwd[PATH_MAX];
@@ -168,10 +159,10 @@ int main(int argc, char *argv[]) {
     //     return 1;
     // }
 
-    if (access(options.file_name, R_OK) == 0) {
-        spawn_unitd(options.run_dir, options.file_name);
+    if (access(g_options.file_name, R_OK) == 0) {
+        spawn_unitd(g_options.run_dir, g_options.file_name);
     } else {
-        fprintf(stdout, RED "Error!" NO_COLOR " Invalid config file " CYAN "'%s'!\n" NO_COLOR, options.file_name);
+        fprintf(stdout, RED "Error!" NO_COLOR " Invalid config file " CYAN "'%s'!\n" NO_COLOR, g_options.file_name);
         return ENOENT;
     }
 

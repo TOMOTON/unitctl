@@ -21,6 +21,7 @@ struct options {
     bool help;
     bool version;
     bool use_colors;
+    bool debug;
     char file_name[MAX_PATH_SIZE];
     char run_dir[MAX_PATH_SIZE];
 };
@@ -28,6 +29,9 @@ struct options {
 
 /* Exports options as a global type */
 typedef struct options options_t;
+
+
+extern options_t g_options;
 
 
 /* Public functions section */
