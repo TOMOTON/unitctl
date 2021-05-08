@@ -31,28 +31,50 @@
 
 /* Global options. */
 options_t g_options;
-//char *config_file_path;
+
+
+typedef void (*on_await_unitd)(int);
+
+
+void reconfigure_unitd(int signum, void (*on_await_unitd)(int)) {
+    char* unix_socket_path = concat(g_options.run_dir, CONTROL_UNIT_SOCK);
+    if(await_unitd(unix_socket_path) == 0) {
+        if (on_await_unitd != NULL) {
+            on_await_unitd(signum);
+        }
+        configure_unitd(unix_socket_path, CONFIG_PATH, g_options.file_name);
+        print_success("Reconfiguration done with", g_options.file_name);
+    } else {
+        char *subject = malloc((strlen(g_options.run_dir) + 1) * sizeof(char));
+        sprintf(subject, "%s/unit.log", g_options.run_dir);
+        print_error("Check Nginx Unit logs in", subject);
+        free(subject);
+    }
+    free(unix_socket_path);
+}
 
 
 void sigint_handler(int signum) {
     (void)signum;
-    //Return type of the handler function should be void
-    //printf("\nInside SIGINT handler function\n");
-    printf("\n");
+    printf("\n"); // Force break in standard output.
 }
 
 
 void sigusr1_handler(int signum) {
     (void)signum;
-    //Return type of the handler function should be void
-    char* unix_socket_path = concat(g_options.run_dir, CONTROL_UNIT_SOCK);
-    configure_unitd(unix_socket_path, LOCALHOST_CONFIG, g_options.file_name);
-    free(unix_socket_path);
-    fprintf(stdout, GREEN "Succes!" NO_COLOR " Reconfiguration done.\n" NO_COLOR);
+    reconfigure_unitd(signum, NULL);
 }
 
 
-int spawn_unitd(char* run_dir, char* file_name) {
+void main_await_unitd(int signum) {
+    (void)signum;
+    fprintf(stdout, YELLOW "--<<-" NO_COLOR "\n");
+    signal(SIGUSR1, sigusr1_handler);
+    print_info("Installed reconfigure handler for signal", "SIGUSR1");
+}
+
+
+int spawn_unitd() {
     int link[2];
     pid_t pid;
     char foo[4096 + 1];
@@ -68,71 +90,59 @@ int spawn_unitd(char* run_dir, char* file_name) {
         dup2(link[1], STDOUT_FILENO);
         close(link[0]);
         close(link[1]);
-        //! fprintf(stdout, BLUE "CHILD: BEFORE exec!\n" NO_COLOR);
-        //execl("/bin/ls", "ls", "-1", (char *)0);
         //execl("/usr/sbin/unitd", "unitd", "--no-daemon", "--control", "unix:/var/run/control.unit.sock", (char *)0);
         //char * argv_list[] = { "unitd", "--no-daemon", "--control", "unix:/var/run/control.unit.sock" };
-        //char *unix_socket = as_unix(CONTROL_UNIT_SOCK);
-        char *socket_path = concat(run_dir, CONTROL_UNIT_SOCK);
+        char *socket_path = concat(g_options.run_dir, CONTROL_UNIT_SOCK);
         char *unix_socket = concat("unix:", socket_path);
-        char *pid_path = concat(run_dir, UNIT_PID);
-        char *log_path = concat(run_dir, UNIT_LOG);
-        //char *state_path = concat(run_dir, );
+        char *pid_path = concat(g_options.run_dir, UNIT_PID);
+        char *log_path = concat(g_options.run_dir, UNIT_LOG);
         char *argv_list[] = { "unitd",
                               "--no-daemon",
                               "--control", unix_socket,
                               "--pid", pid_path,
                               "--log", log_path,
-                              "--state", run_dir
+                              "--state", g_options.run_dir
                             };
                             //   "--user", "vagrant",
                             //   "--group", "vagrant"
                             // };
-        execv("/usr/sbin/unitd", argv_list);
-        //! fprintf(stdout, BLUE "CHILD: AFTER exec!\n" NO_COLOR);
+        execv(USR_SBIN_UNITD, argv_list);
         die("execl");
-        free(socket_path);
-        free(unix_socket);
-        free(pid_path);
-        free(log_path);
         free(argv_list);
+        free(log_path);
+        free(pid_path);
+        free(unix_socket);
+        free(socket_path);
     } else { // Parent
         close(link[1]);
         signal(SIGINT, sigint_handler);
-        char* unix_socket_path = concat(run_dir, CONTROL_UNIT_SOCK);
-        fprintf(stdout, BLUE "Unit run dir" CYAN " %s\n" NO_COLOR, run_dir);
-        //fprintf(stdout, BLUE "Unit socket path" CYAN " %s\n" NO_COLOR, unix_socket_path);
-        //fprintf(stdout, BLUE "Config file path %s\n" NO_COLOR, file_name);
-        //fprintf(stdout, BLUE "Application URL  %s\n" NO_COLOR, LOCALHOST_CONFIG);
-        fprintf(stdout, NO_COLOR "Output unitd:\n-->>\n" NO_COLOR);
-        if(await_unitd(unix_socket_path) == 0) {
-            fprintf(stdout, NO_COLOR "--<<-\n" NO_COLOR);
-            signal(SIGUSR1, sigusr1_handler);
-            configure_unitd(unix_socket_path, CONFIG_PATH, file_name);
-            fprintf(stdout, GREEN "Succes!" NO_COLOR " Reconfiguration done.\n" NO_COLOR);
-            //wait(NULL);
-            int returnStatus;
-            waitpid(pid, &returnStatus, 0); // Parent process waits here for child to terminate.
+        print_info("Unit run dir is", g_options.run_dir);
+        fprintf(stdout, "Output unitd:\n" YELLOW "-->>" NO_COLOR "\n");
+        reconfigure_unitd(0, &main_await_unitd);
 
-            // Single
-            // int nbytes = read(link[0], foo, sizeof(foo));
-            // printf("Output: (%.*s)\n", nbytes, foo);
-            // Continuous
-            // int nbytes;
-            // while (0 != (nbytes = read(link[0], foo, sizeof(foo)))) {
-            //   //totalStr = totalStr + foo;
-            //   printf("Child stdout:\n>>>---\n%.*s\n---<<<\n", nbytes, foo);
-            //   memset(foo, 0, 4096);
-            // }
-            if (returnStatus == 0) { // Verify child process terminated without error
-                printf("The unitd process terminated normally.\n");
-            } else {
-                printf("The unitd process terminated with an error!.\n");
-            }
-        } else {
-            fprintf(stdout, RED "Failure!" NO_COLOR " Check Nginx Unit logs in '%s/unit.log'!\n" NO_COLOR, run_dir);
+        int child_status;
+        waitpid(pid, &child_status, 0); // Parent process waits here for child to terminate.
+
+        // Single
+        // int nbytes = read(link[0], foo, sizeof(foo));
+        // printf("Output: (%.*s)\n", nbytes, foo);
+        // Continuous
+        int nbytes;
+        while (0 != (nbytes = read(link[0], foo, sizeof(foo)))) {
+            //totalStr = totalStr + foo;
+            printf("Child stdout:\n>>>---\n%.*s\n---<<<\n", nbytes, foo);
+            memset(foo, 0, 4096);
         }
-        free(unix_socket_path);
+
+        if (child_status == 0) { // Verify child process terminated without error
+            print_success("The unitd process terminated normally with exit code", "0");
+        } else {
+            //int code_length = ;
+            char *subject = malloc((child_status + 1) * sizeof(char));
+            sprintf(subject, "%d", child_status);
+            print_error("The unitd process terminated with error code", subject);
+            free(subject);
+        }
     }
     return 0;
 }
@@ -147,7 +157,7 @@ int main(int argc, char *argv[]) {
 //     fprintf(stdout, BLUE "Command line g_options:\n" NO_COLOR);
 //     fprintf(stdout, YELLOW "help: %d\n" NO_COLOR, g_options.help);
 //     fprintf(stdout, YELLOW "version: %d\n" NO_COLOR, g_options.version);
-//     fprintf(stdout, YELLOW "use colors: %d\n" NO_COLOR, g_options.use_colors);
+//     fprintf(stdout, YELLOW "no color: %d\n" NO_COLOR, g_options.no_color);
 //     fprintf(stdout, YELLOW "filename: %s\n" NO_COLOR, g_options.file_name);
 // #endif
 
@@ -160,9 +170,9 @@ int main(int argc, char *argv[]) {
     // }
 
     if (access(g_options.file_name, R_OK) == 0) {
-        spawn_unitd(g_options.run_dir, g_options.file_name);
+        spawn_unitd();
     } else {
-        fprintf(stdout, RED "Error!" NO_COLOR " Invalid config file " CYAN "'%s'!\n" NO_COLOR, g_options.file_name);
+        print_error("Invald config file", g_options.file_name);
         return ENOENT;
     }
 

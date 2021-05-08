@@ -20,7 +20,7 @@
 struct options {
     bool help;
     bool version;
-    bool use_colors;
+    bool no_color;
     bool debug;
     char file_name[MAX_PATH_SIZE];
     char run_dir[MAX_PATH_SIZE];

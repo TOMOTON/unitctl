@@ -25,7 +25,7 @@
 static void set_default_options(options_t* options) {
     options->help = false;
     options->version = false;
-    options->use_colors = true;
+    options->no_color = false;
     options->debug = false;
     options->run_dir[0] = 0;
 }
@@ -47,15 +47,14 @@ void switch_options (int arg, options_t* options) {
             exit(EXIT_SUCCESS);
 
         case 'r':
-            //options->run_dir = optarg;
             fprintf(stdout, "args::switch_options -> optarg=%s!\n", optarg);
-            char* run_dir = concat(optarg, "/");
+            char *run_dir = concat(optarg, "/");
             strncpy(options->run_dir, run_dir, MAX_PATH_SIZE);
             free(run_dir);
             break;
 
         case 0:
-            options->use_colors = false;
+            options->no_color = true;
             break;
 
         case 'd':

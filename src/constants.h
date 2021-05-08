@@ -8,6 +8,8 @@
 #define CONSTANTS_H
 
 
+static char const USR_SBIN_UNITD[] = "/usr/sbin/unitd";
+
 static char const CONTROL_UNIT_SOCK[] = "control.unit.sock";
 
 static char const UNIT_PID[] = "unit.pid";
