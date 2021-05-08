@@ -119,7 +119,7 @@ void options_parser(int argc, char* argv[], options_t* options) {
         {"help", no_argument, 0, 'h'},
         {"version", no_argument, 0, 'v'},
         {"run-dir", required_argument, 0, 'r'},
-        {"no-colors", no_argument, 0, 0},
+        {"no-color", no_argument, 0, 0},
         {"debug", no_argument, 0, 'd'},
         {NULL, 0, NULL, 0}
     };
