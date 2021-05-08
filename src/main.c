@@ -77,8 +77,6 @@ void main_await_unitd(int signum) {
 int spawn_unitd() {
     int link[2];
     pid_t pid;
-    char foo[4096 + 1];
-    memset(foo, 0, 4096);
 
     if (pipe(link) == -1)
         die("pipe");
@@ -101,7 +99,8 @@ int spawn_unitd() {
                               "--control", unix_socket,
                               "--pid", pid_path,
                               "--log", log_path,
-                              "--state", g_options.run_dir
+                              "--state", g_options.run_dir,
+                              (char *)0
                             };
                             //   "--user", "vagrant",
                             //   "--group", "vagrant"
@@ -123,16 +122,18 @@ int spawn_unitd() {
         int child_status;
         waitpid(pid, &child_status, 0); // Parent process waits here for child to terminate.
 
+        // char foo[4096 + 1];
+        // memset(foo, 0, 4096);
         // Single
         // int nbytes = read(link[0], foo, sizeof(foo));
         // printf("Output: (%.*s)\n", nbytes, foo);
         // Continuous
-        int nbytes;
-        while (0 != (nbytes = read(link[0], foo, sizeof(foo)))) {
-            //totalStr = totalStr + foo;
-            printf("Child stdout:\n>>>---\n%.*s\n---<<<\n", nbytes, foo);
-            memset(foo, 0, 4096);
-        }
+        // int nbytes;
+        // while (0 != (nbytes = read(link[0], foo, sizeof(foo)))) {
+        //     //totalStr = totalStr + foo;
+        //     printf("Child stdout:\n>>>---\n%.*s\n---<<<\n", nbytes, foo);
+        //     memset(foo, 0, 4096);
+        // }
 
         if (child_status == 0) { // Verify child process terminated without error
             print_success("The unitd process terminated normally with exit code", "0");
