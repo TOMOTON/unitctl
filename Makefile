@@ -108,7 +108,7 @@ valgrind:
 		--show-leak-kinds=all \
 		--leak-resolution=high \
 		--log-file=$(LOGDIR)/$@.log \
-		$(BINDIR)/$(BINARY) .data/config.json
+		$(BINDIR)/$(BINARY) .data/valgrind/config.json
 	@echo -en "\nCheck the log file: $(LOGDIR)/$@.log\n"
 
 
