@@ -34,6 +34,7 @@ Vagrant.configure("2") do |config|
     apt install -y libcurl4-openssl-dev
     apt install -y unit
     service unit stop # disable unit service!
+    apt-get -y install docker-ce docker-ce-cli containerd.io
   SHELL
   config.vm.provision :shell, name: '.bashrc.d', :inline => "echo 'Creating .bashrc.d...' &&  mkdir -p ~/.bashrc.d && chmod 700 ~/.bashrc.d", privileged: false
   config.vm.provision :shell, name: 'direnv.bashrc', :inline => "echo -e '#{$bashrc_001}' > ~/.bashrc.d/001-direnv && chmod +x ~/.bashrc.d/001-direnv", privileged: false
