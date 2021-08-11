@@ -20,15 +20,17 @@ done
 SHELL
 
 Vagrant.configure("2") do |config|
-  config.vm.box = "generic/debian9"
+  config.vm.box = "generic/debian10"
   config.vm.host_name = "unitctl"
   config.vm.network "private_network", type: "dhcp"
   config.vm.synced_folder ".", "/vagrant"
   config.vm.provision "shell", name: 'packages', inline: <<-SHELL
+    apt install -y apt-transport-https ca-certificates gnupg lsb-release
     curl -sL https://nginx.org/keys/nginx_signing.key | apt-key add -
-    printf "deb https://packages.nginx.org/unit/debian/ stretch unit\ndeb-src https://packages.nginx.org/unit/debian/ stretch unit\n" > /etc/apt/sources.list.d/unit.list
+    printf "deb https://packages.nginx.org/unit/debian/ buster unit\ndeb-src https://packages.nginx.org/unit/debian/ buster unit\n" > /etc/apt/sources.list.d/unit.list
+    curl -fsSL https://download.docker.com/linux/debian/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
     apt update
-    apt install -y apt-transport-https ca-certificates
     apt install -y direnv
     apt install -y libcmocka-dev libcmocka0
     apt install -y libcurl4-openssl-dev
